@@ -1,6 +1,6 @@
 {
-  "name": "mp4box",
-  "version": "0.3.16",
+  "name": "@disoul/mp4box",
+  "version": "0.3.16-fix.1",
   "description": "JavaScript version of GPAC's MP4Box tool",
   "keywords": [
     "mp4",
@@ -9,7 +9,7 @@
     "streaming"
   ],
   "homepage": "https://github.com/gpac/mp4box.js",
-  "main": "dist/mp4box.all.js",
+  "main": "dist/@disoul/mp4box.all.js",
   "repository": {
     "type": "git",
     "url": "git://github.com/gpac/mp4box.js.git"

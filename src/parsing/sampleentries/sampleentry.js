@@ -48,7 +48,7 @@ BoxParser.createMediaSampleEntryCtor(BoxParser.SAMPLE_ENTRY_TYPE_VISUAL, functio
 	this.vertresolution = stream.readUint32();
 	stream.readUint32();
 	this.frame_count = stream.readUint16();
-	compressorname_length = Math.min(31, stream.readUint8());
+	var compressorname_length = Math.min(31, stream.readUint8());
 	this.compressorname = stream.readString(compressorname_length);
 	if (compressorname_length < 31) {
 		stream.readString(31 - compressorname_length);
