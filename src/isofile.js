@@ -453,6 +453,12 @@ ISOFile.prototype.processSamples = function(last) {
 					}
 				}
 			}
+			if (last && trak.nextSample === trak.samples.length) {
+				if (this.onSegment) {
+					this.onSegment(fragTrak.id, fragTrak.user, fragTrak.segmentStream.buffer, trak.nextSample, (last && trak.nextSample >= trak.samples.length));
+				}
+				fragTrak.segmentStream = null;
+			}
 		}
 	}
 
