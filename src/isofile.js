@@ -591,8 +591,12 @@ ISOFile.prototype.seekTrack = function(time, useRap, trak) {
 	}
 	time = trak.samples[seek_sample_num].cts;
 	trak.nextSample = seek_sample_num;
-	while (trak.samples[seek_sample_num].alreadyRead === trak.samples[seek_sample_num].size) {
+	while (seek_sample_num < trak.samples.length && trak.samples[seek_sample_num].alreadyRead === trak.samples[seek_sample_num].size) {
 		seek_sample_num++;
+	}
+	// all samples are already read
+	if (seek_sample_num === trak.samples.length) {
+		return { offset: -1, time: time/timescale };
 	}
 	seek_offset = trak.samples[seek_sample_num].offset+trak.samples[seek_sample_num].alreadyRead;
 	Log.info("ISOFile", "Seeking to "+(useRap ? "RAP": "")+" sample #"+trak.nextSample+" on track "+trak.tkhd.track_id+", time "+Log.getDurationString(time, timescale) +" and offset: "+seek_offset);
