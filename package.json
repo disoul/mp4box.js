@@ -1,6 +1,6 @@
 {
   "name": "@disoul/mp4box",
-  "version": "0.3.16-fix.10",
+  "version": "0.3.16-fix.15",
   "description": "JavaScript version of GPAC's MP4Box tool",
   "keywords": [
     "mp4",

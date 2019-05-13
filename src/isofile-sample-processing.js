@@ -558,6 +558,7 @@ ISOFile.prototype.getSample = function(trak, sampleNum) {
 /* Release the memory used to store the data of the sample */
 ISOFile.prototype.releaseSample = function(trak, sampleNum) {	
 	var sample = trak.samples[sampleNum];
+	this.stream.cleanBufferRange(sample.offset, sample.offset + sample.size);
 	if (sample.data) {
 		this.samplesDataSize -= sample.size;
 		sample.data = null;

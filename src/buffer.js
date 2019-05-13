@@ -85,6 +85,7 @@ MultiBufferStream.prototype.reduceBuffer = function(buffer, offset, newLength) {
 */
 MultiBufferStream.prototype.insertBuffer = function(ab) {	
 	var to_add = true;
+	var needToInsert = [];
 	/* TODO: improve insertion if many buffers */
 	for (var i = 0; i < this.buffers.length; i++) {
 		var b = this.buffers[i];
@@ -110,6 +111,11 @@ MultiBufferStream.prototype.insertBuffer = function(ab) {
 					/* no overlap, we can add it as is */
 				} else {
 					/* There is some overlap, cut the new buffer short, and add it*/
+					if (ab.fileStart + ab.byteLength > b.fileStart + b.byteLength) {
+						//  b.s\-----\b.e
+						// a.s\--------\a.e
+						needToInsert.push(this.reduceBuffer(ab, b.fileStart - ab.fileStart, ab.fileStart + ab.byteLength - b.fileStart));
+					}
 					ab = this.reduceBuffer(ab, 0, b.fileStart - ab.fileStart);
 				}
 				Log.debug("MultiBufferStream", "Appending new buffer (fileStart: "+ab.fileStart+" - Length: "+ab.byteLength+")");
@@ -145,6 +151,17 @@ MultiBufferStream.prototype.insertBuffer = function(ab) {
 		if (i === 0) {
 			this.buffer = ab;
 		}
+	}
+
+	var newBuffers = [];
+	for (i = 0; i < this.buffers.length; i += 1) {
+		if (this.buffers[i].byteLength > 0) {
+			newBuffers.push(this.buffers[i]);
+		}
+	}
+
+	for (i = 0; i < needToInsert.length; i += 1) {
+		this.insertBuffer(needToInsert[i]);
 	}
 }
 
@@ -193,6 +210,8 @@ MultiBufferStream.prototype.logBufferLevel = function(info) {
 }
 
 MultiBufferStream.prototype.cleanBuffers = function () {
+	return;
+	/*
 	var i;
 	var buffer;
 	for (i = 0; i < this.buffers.length; i++) {
@@ -203,6 +222,7 @@ MultiBufferStream.prototype.cleanBuffers = function () {
 			i--;
 		}
 	}
+	*/
 }
 
 MultiBufferStream.prototype.mergeNextBuffer = function() {
@@ -225,6 +245,62 @@ MultiBufferStream.prototype.mergeNextBuffer = function() {
 		}
 	} else {
 		return false;
+	}
+}
+
+MultiBufferStream.prototype.cleanBufferRange = function(start, end) {
+	function getCleanRange(buffer) {
+		if (buffer.fileStart >= end) return [];
+		if (start >= buffer.fileStart + buffer.byteLength) return [];
+		if (buffer.fileStart >= start && buffer.fileStart + buffer.byteLength <= end) return [buffer.fileStart, buffer.fileStart + buffer.byteLength];
+		if (buffer.fileStart <= start && buffer.fileStart + buffer.byteLength >= end) return [start, end];
+		if (buffer.fileStart <= start) return [start, buffer.fileStart + buffer.byteLength];
+
+		return [buffer.fileStart, end];
+
+	}
+	var needToInsert = [];
+	for (var i = 0; i < this.buffers.length; i += 1) {
+		var buffer = this.buffers[i];
+		var cleanRange = getCleanRange(buffer);
+		// no need to clean
+		if (cleanRange.length === 0) {
+			continue;
+		}
+		// all to clean
+		if (cleanRange[0] === buffer.fileStart && cleanRange[1] === buffer.fileStart + buffer.byteLength) {
+			this.buffers[i] = new Uint8Array(0).buffer;
+			continue;
+		}
+
+		// clean left
+		if (cleanRange[0] === buffer.fileStart) {
+			this.buffers[i] = this.reduceBuffer(buffer, cleanRange[1] - buffer.fileStart, buffer.fileStart + buffer.byteLength - cleanRange[1]);
+			continue;
+		}
+
+		// clean right
+		if (cleanRange[1] === buffer.fileStart + buffer.byteLength) {
+			this.buffers[i] = this.reduceBuffer(buffer, 0, cleanRange[0] - buffer.fileStart);
+			continue;
+		}
+
+		// split
+		var newBuffer = this.reduceBuffer(buffer, cleanRange[1] - buffer.fileStart, buffer.fileStart + buffer.byteLength - cleanRange[1]);
+		this.buffers[i] = this.reduceBuffer(buffer, 0, cleanRange[0] - buffer.fileStart);
+		needToInsert.push(newBuffer);
+	}
+	var newBuffers = [];
+	for (i = 0; i < this.buffers.length; i += 1) {
+		if (this.buffers[i].byteLength > 0) {
+			newBuffers.push(this.buffers[i]);
+		}
+	}
+
+	this.buffers = newBuffers;
+
+	for (i = 0; i < needToInsert.length; i += 1) {
+		this.insertBuffer(needToInsert[i]);
 	}
 }
 

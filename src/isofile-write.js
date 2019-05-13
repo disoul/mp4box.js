@@ -32,6 +32,7 @@ ISOFile.prototype.createFragment = function(track_id, sampleNumber, stream_) {
 	var mdat = new BoxParser.mdatBox();
 	mdat.data = sample.data;
 	mdat.write(stream);
+	this.releaseSample(trak, sampleNumber);
 	return stream;
 }
 
