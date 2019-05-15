@@ -437,11 +437,25 @@ ISOFile.prototype.processSamples = function(last) {
 					/* The fragment could not be created because the media data is not there (not downloaded), wait for it */
 					break;
 				}
+				var doSegment = false;
+				var nextSample = trak.samples[trak.nextSample];
+				fragTrak.lastSegmentSampleIndex = fragTrak.lastSegmentSampleIndex || 0;
+				if (last && trak.nextSample >= trak.samples.length) {
+					doSegment = true;
+				}
+				// 如果打开 rap 分割，只有当下一帧是 I 帧，且距离上一次分割超过了 nbSamples 后才会触发分割
+				if (fragTrak.rapAlignement && trak.nextSample - fragTrak.lastSegmentSampleIndex >= fragTrak.nb_samples && (!nextSample || nextSample.is_sync)) {
+					doSegment = true;
+				}
+				if (!fragTrak.rapAlignement && trak.nextSample % fragTrak.nb_samples === 0) {
+					doSegment = true;
+				}
 				/* A fragment is created by sample, but the segment is the accumulation in the buffer of these fragments.
 				   It is flushed only as requested by the application (nb_samples) to avoid too many callbacks */
-				if (trak.nextSample % fragTrak.nb_samples === 0 || (last && trak.nextSample >= trak.samples.length)) {
+				if (doSegment) {
 					Log.info("ISOFile", "Sending fragmented data on track #"+fragTrak.id+" for samples ["+Math.max(0,trak.nextSample-fragTrak.nb_samples)+","+(trak.nextSample-1)+"]");
 					Log.info("ISOFile", "Sample data size in memory: "+this.getAllocatedSampleDataSize());
+					fragTrak.lastSegmentSampleIndex = trak.nextSample;
 					if (this.onSegment) {
 						this.onSegment(fragTrak.id, fragTrak.user, fragTrak.segmentStream.buffer, trak.nextSample, (last && trak.nextSample >= trak.samples.length));
 					}
@@ -599,6 +613,14 @@ ISOFile.prototype.seekTrack = function(time, useRap, trak) {
 		return { offset: -1, time: time/timescale };
 	}
 	seek_offset = trak.samples[seek_sample_num].offset+trak.samples[seek_sample_num].alreadyRead;
+	// clean fragmentTrack
+	for (j = 0; j < this.fragmentedTracks.length; j += 1) {
+		var fragTrak = this.fragmentedTracks[j];
+		if (trak !== fragTrak.trak) continue;
+
+		fragTrak.lastSegmentSampleIndex = trak.nextSample;
+		fragTrak.segmentStream = null;
+	}
 	Log.info("ISOFile", "Seeking to "+(useRap ? "RAP": "")+" sample #"+trak.nextSample+" on track "+trak.tkhd.track_id+", time "+Log.getDurationString(time, timescale) +" and offset: "+seek_offset);
 	return { offset: seek_offset, time: time/timescale };
 }
